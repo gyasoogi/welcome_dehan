@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>행사 안내 대시보드</title>
+    <style>
+        @font-face {
+            font-family: 'Juache';
+            src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_one@1.0/BMJUA.woff') format('woff');
+            font-weight: normal;
+            font-display: swap;
+        }
+
+        /* 🎨 라이트 모드 (기본 색상 변수) */
+        :root {
+            --bg-color: #f9f9fb;
+            --text-main: #444;
+            --text-title: #222;
+            --text-sub: #666;
+            --nav-bg: #ffffff;
+            --nav-btn-color: #a0a0a0;
+            --card-bg: #ffffff;
+            --notice-hover-shadow: rgba(246, 195, 101, 0.15);
+            --notice-border-hover: #fce09c;
+            --notice-tba-bg: #f1f3f5;
+            --notice-tba-num: #e9ecef;
+            --notice-tba-text: #868e96;
+            --modal-overlay: rgba(0,0,0,0.4);
+            --modal-bg: #ffffff;
+            --modal-close-bg: #f1f3f5;
+            --map-placeholder-bg: #fff9ed;
+        }
+
+        /* 🌙 다크 모드 (색상 변수) */
+        [data-theme="dark"] {
+            --bg-color: #121212;
+            --text-main: #e0e0e0;
+            --text-title: #ffffff;
+            --text-sub: #a0a0a0;
+            --nav-bg: #1e1e1e;
+            --nav-btn-color: #777;
+            --card-bg: #1e1e1e;
+            --notice-hover-shadow: rgba(0, 0, 0, 0.5);
+            --notice-border-hover: #d19417;
+            --notice-tba-bg: #1a1a1a;
+            --notice-tba-num: #2a2a2a;
+            --notice-tba-text: #555;
+            --modal-overlay: rgba(0,0,0,0.7);
+            --modal-bg: #1e1e1e;
+            --modal-close-bg: #2a2a2a;
+            --map-placeholder-bg: #2a2a2a;
+        }
+
+        /* 기본 리셋 및 폰트 설정 */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Pretendard', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background-color: var(--bg-color); 
+            color: var(--text-main);
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        /* 전체 레이아웃 */
+        .app-container {
+            display: flex;
+            flex-direction: column-reverse;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* 좌측/하단 내비게이션 메뉴 */
+        .nav-menu {
+            display: flex;
+            background-color: var(--nav-bg);
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.05);
+            height: 70px;
+            z-index: 100;
+            padding-bottom: env(safe-area-inset-bottom);
+            transition: background-color 0.3s ease;
+        }
+
+        .brand-logo { display: none; }
+
+        .nav-btn {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            background: none;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--nav-btn-color);
+            cursor: pointer;
+            gap: 4px;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-btn i { font-size: 18px; font-style: normal; }
+        .nav-btn.active { color: #f6c365; }
+
+        /* 메인 콘텐츠 영역 */
+        .content-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            position: relative;
+        }
+
+        /* 공지사항 리스트 스타일 */
+        .notice-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .notice-item {
+            background: var(--card-bg);
+            padding: 20px 24px;
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.02);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+        }
+
+        .notice-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px var(--notice-hover-shadow);
+            border-color: var(--notice-border-hover);
+        }
+
+        .notice-number {
+            background: var(--map-placeholder-bg);
+            color: #f6c365;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 15px;
+            font-size: 14px;
+            flex-shrink: 0;
+            transition: background-color 0.3s ease;
+        }
+
+        .notice-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-title);
+            flex: 1;
+            transition: color 0.3s ease;
+        }
+
+        /* 추후 공개(비활성) 항목 스타일 */
+        .notice-item.tba {
+            background: var(--notice-tba-bg);
+            cursor: not-allowed;
+        }
+        .notice-item.tba:hover {
+            transform: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.02);
+            border-color: transparent;
+        }
+        .notice-item.tba .notice-number { background: var(--notice-tba-num); color: var(--notice-tba-text); }
+        .notice-item.tba .notice-title { color: var(--notice-tba-text); }
+
+        /* 모달(팝업) 스타일 */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--modal-overlay);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .modal-overlay.show { opacity: 1; visibility: visible; }
+
+        .modal-content {
+            background: var(--modal-bg);
+            width: 90%;
+            max-width: 800px;
+            border-radius: 24px;
+            padding: 40px 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            transform: translateY(20px);
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .modal-overlay.show .modal-content { transform: translateY(0); }
+
+        .modal-close {
+            position: absolute;
+            top: 20px; right: 20px;
+            background: var(--modal-close-bg);
+            border: none;
+            width: 32px; height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 14px;
+            color: var(--text-main);
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        .modal-title { 
+            font-size: 20px; 
+            padding-bottom: 25px; /* 줄나눔선과 제목 사이의 간격 */
+            margin-bottom: 30px; /* 줄나눔선과 본문 내용 사이의 간격 */
+            color: var(--text-title); 
+            text-align: center; 
+            border-bottom: 2px solid var(--notice-tba-num); /* 테마에 맞춰 변하는 줄나눔선 */
+        }
+        
+        .modal-body { 
+            font-size: 15px; 
+            color: var(--text-sub); 
+            line-height: 1.6; 
+            min-height: 100px;
+            white-space: pre-wrap; 
+            text-align: center; 
+        }
+
+        /* 커스텀 태그 스타일 */
+        t-l { font-weight: 600; color: var(--text-title); font-size: 1.05em; }
+        t-s { font-weight: 300; color: var(--text-sub); opacity: 0.7; font-size: 0.9em; }
+
+        /* 배치도 탭 */
+        .card {
+            background: var(--card-bg); padding: 24px; border-radius: 20px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.03); margin-bottom: 20px;
+            transition: background-color 0.3s ease;
+        }
+        .map-placeholder {
+            width: 100%; height: 400px; background-color: var(--map-placeholder-bg);
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 16px; color: #f6c365; font-weight: bold;
+            border: 2px dashed #fce09c;
+            transition: background-color 0.3s ease;
+        }
+
+        /* 탭 전환 로직 */
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.4s ease; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* 🌗 다크모드 토글 버튼 */
+        .theme-toggle-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 16px;
+            border-radius: 20px;
+            border: none;
+            background: var(--card-bg);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-main);
+            cursor: pointer;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: all 0.3s ease;
+        }
+
+        /* 데스크탑 레이아웃 */
+        @media (min-width: 768px) {
+            .app-container { flex-direction: row; }
+            .nav-menu {
+                flex-direction: column; width: 260px; height: 100vh;
+                padding-top: 40px; box-shadow: 4px 0 24px rgba(0,0,0,0.05);
+                position: relative;
+            }
+            .brand-logo {
+                font-family: 'Juache';
+                display: block; font-size: 23px;
+                color: var(--text-title); text-align: center; margin-bottom: 50px;
+                padding: 0 10px; line-height: 1.4;
+            }
+            .brand-logo span { color: #f6c365; }
+            .nav-btn {
+                flex: none; flex-direction: row; justify-content: flex-start;
+                height: 54px; padding: 0 20px; margin: 0 20px 10px 0;
+                font-size: 15px; border-radius: 0 27px 27px 0;
+            }
+            .nav-btn i { margin-right: 15px; font-size: 20px; }
+            
+            [data-theme="light"] .nav-btn:hover { background-color: #fff9ed; }
+            [data-theme="light"] .nav-btn.active { background-color: #fce09c; color: #d19417; }
+            
+            [data-theme="dark"] .nav-btn:hover { background-color: #2a2a2a; }
+            [data-theme="dark"] .nav-btn.active { background-color: #3a2e16; color: #f6c365; }
+
+            .content-area { padding: 40px 50px; }
+
+            .theme-toggle-btn {
+                top: auto;
+                right: auto;
+                bottom: 30px;
+                left: 30px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 다크모드 토글 버튼 -->
+    <button class="theme-toggle-btn" id="themeToggle" onclick="toggleTheme()">🌙 다크모드</button>
+
+    <div class="app-container">
+        <!-- 좌측/하단 메뉴 -->
+        <nav class="nav-menu">
+            <div class="brand-logo">어서오세요, <span>데한민국에</span></div>
+            <button class="nav-btn active" onclick="showTab('notice', this)">
+                <i>📢</i> <span>공지사항</span>
+            </button>
+            <button class="nav-btn" onclick="showTab('map', this)">
+                <i>🗺️</i> <span>부스 배치도</span>
+            </button>
+        </nav>
+
+        <!-- 메인 콘텐츠 영역 -->
+        <main class="content-area">
+            
+            <!-- 1. 공지사항 탭 -->
+            <div id="notice" class="tab-content active">
+                <h2 style="margin-bottom: 24px; color: var(--text-title);">공지사항</h2>
+                
+                <div class="notice-list">
+                    <div class="notice-item" onclick="openModal('1')">
+                        <div class="notice-number">1</div>
+                        <div class="notice-title">투어 개요</div>
+                    </div>
+                    <div class="notice-item" onclick="openModal('2')">
+                        <div class="notice-number">2</div>
+                        <div class="notice-title">투어 일정 안내</div>
+                    </div>
+                    <div class="notice-item" onclick="openModal('3')">
+                        <div class="notice-number">3</div>
+                        <div class="notice-title">1차 네이티브(부스) 모집 안내</div>
+                    </div>
+                    <div class="notice-item tba">
+                        <div class="notice-number">4</div>
+                        <div class="notice-title">2차 네이티브(부스) 모집 안내 (추후 공개)</div>
+                    </div>
+                    <div class="notice-item tba">
+                        <div class="notice-number">5</div>
+                        <div class="notice-title">1차 투어리스트(참관객) 모집 안내 (추후 공개)</div>
+                    </div>
+                    <div class="notice-item tba">
+                        <div class="notice-number">6</div>
+                        <div class="notice-title">2차 투어리스트(참관객) 모집 안내 (추후 공개)</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. 부스 배치도 탭 -->
+            <div id="map" class="tab-content">
+                <h2 style="margin-bottom: 24px; color: var(--text-title);">부스 배치도</h2>
+                <div class="card">
+                    <div class="map-placeholder">
+                        추후 공개됩니다
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- 팝업(모달) 구조 -->
+    <div class="modal-overlay" id="noticeModal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal()">✕</button>
+            <h3 class="modal-title" id="modalTitle">제목</h3>
+            <div class="modal-body" id="modalBody">내용이 들어갑니다.</div>
+        </div>
+    </div>
+
+    <script>
+        const noticeData = {
+            '1': {
+                title: '투어 개요',
+                content: `
+
+                <t-l>《 어서오세요, 데한민국에. 》</t-l>
+
+                본 행사는 『데뷔 못 하면 죽는 병 걸림』내
+                아이돌 그룹 테스타를 주제로 하는
+                2차 창작 아마추어 행사입니다.
+
+                본 행사는 공식과는 무관하며,
+                영리 목적 없이 운영됩니다.
+
+
+                <t-s>~ 어데배 용어 안내 ~
+
+                - 부스러(네이티브) : 데한민국 원주민, 현지인
+                - 참관객(투어리스트) : 여행객, 관광객
+                - 스태프(가이드) : 데한민국 외교부 직원
+                - 주최(장관) : 데한민국 외교부 장관</t-s>
+                `
+            },
+            '2': {
+                title: '투어 일정 안내',
+                content: `
+                <t-l>협력 모집 및 컨택</t-l>
+                26년 7월 9일 ~ 현재 진행 중(마감 미정)
+
+                <t-l>네이티브 1차 모집</t-l>
+                26년 7월 17일 20:00 ~ 21일 23:59(5일간)
+
+                <t-l>투어리스트 1차 모집</t-l>
+                26년 7월 30일 20:00 ~ 31일 23:59(2일간)
+
+                <t-l>네이티브 2차 모집</t-l>
+                26년 10월 예정
+
+                <t-l>네이티브 명단 공개</t-l>
+                26년 10월 말 예정
+
+                <t-l>투어리스트 2차 모집</t-l>
+                미정
+
+                .
+                .
+                .
+
+                어서오세요, 데한민국에.
+                <t-s>27년 6월 19일 토요일</t-s>
+                `
+            },
+            '3': {
+                title: '1차 네이티브 모집',
+                content: `
+                    <t-l>일시 : 26년 7월 17일 20:00 ~ 21일 23:59(5일간)</t-l>
+
+                    <t-l>반부스 : 45,000원</t-l>
+                    책상 반 개, 의자 1개, 무료입장 1인, 유료입장 1인
+
+                    <t-l>한부스 : 80,000원</t-l>
+                    책상 한 개, 의자 2개, 무료입장 2인, 유료입장 2인
+
+                    신청 대상 :
+                    2027년 행사일 기준 2010년생(만 17세) 포함 그 이전 출생자(주민등록번호 뒷자리 2, 4번으로 시작하는 분)
+
+                    <a href="#" style="color:#f6c365; font-weight:bold; text-decoration:none;">[신청하기]</a>
+                `
+            }
+        };
+
+        // 다크모드 토글 기능
+        function toggleTheme() {
+            const body = document.body;
+            const toggleBtn = document.getElementById('themeToggle');
+            
+            if (body.getAttribute('data-theme') === 'dark') {
+                body.removeAttribute('data-theme');
+                toggleBtn.innerHTML = '🌙 다크모드';
+            } else {
+                body.setAttribute('data-theme', 'dark');
+                toggleBtn.innerHTML = '☀️ 라이트모드';
+            }
+        }
+
+        // 탭 전환 기능
+        function showTab(tabId, btnElement) {
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            btnElement.classList.add('active');
+        }
+
+        // 팝업(모달) 열기
+        function openModal(id) {
+            const data = noticeData[id];
+            if(data) {
+                document.getElementById('modalTitle').innerHTML = data.title;
+                const cleanContent = data.content.replace(/^[ \t]+/gm, '').trim();
+                document.getElementById('modalBody').innerHTML = cleanContent;
+                document.getElementById('noticeModal').classList.add('show');
+            }
+        }
+
+        // 팝업(모달) 닫기
+        function closeModal() {
+            document.getElementById('noticeModal').classList.remove('show');
+        }
+
+        // 모달 바깥 어두운 배경 클릭 시 닫기
+        document.getElementById('noticeModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+    </script>
+</body>
+</html>
